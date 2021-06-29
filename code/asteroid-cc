@@ -8,37 +8,28 @@
 import cProfile
 import sys
 import os
-from asteroid_interp import interp
+from asteroid_compile import compile
 from asteroid_version import VERSION
 from asteroid_globals import redundant_clause_detector_flags
 
 def display_help():
-    print("usage: asteroid [-s][-t][-v][-w][-p][-l] <input file>")
+    print("usage: asteroid-cc [-t][-v][-w][-l] <input file>")
     print("")
     print("command line flags:")
-    print(" -s    symbol table dump flag")
     print(" -t    AST dump flag")
     print(" -v    version flag")
     print(" -w    disable tree walk flag")
-    print(" -p    generate pstats flag")
     print(" -l    disable prologue flag")
     print(" -h    display help flag")
-    print(" -r    redundant pattern dectector")
-    print(" -e    show full exceptions")
 
 
 # defaults for the flags - when the flag is set on the command line
 # it simply toggles the default value in this table.
 flags = {
-    '-s' : False, # symbol table dump flag
     '-t' : False, # AST dump flag
     '-v' : False, # version flag
-    '-w' : True,  # tree walk flag
-    '-p' : False, # generate pstats flag
     '-l' : True,  # prologue flag
     '-h' : False, # display help flag
-    '-r' : True,  # redundant pattern dectector
-    '-e' : False, # show full exceptions
 }
 
 flag_names = list(flags.keys())
@@ -59,8 +50,6 @@ if flags['-v']:
     print("** Asteroid Version {} **".format(VERSION))
     sys.exit(0)
 
-if flags['-r']:
-    redundant_clause_detector_flags[0] = True
 
 input_file = sys.argv[-1]
 
@@ -72,19 +61,16 @@ f = open(input_file, 'r')
 input_stream = f.read()
 f.close()
 
-# execute interpreter
-interp_object = \
-'''interp(input_stream=input_stream,
-       input_name = input_file,
-       tree_dump=flags['-t'],
-       do_walk=flags['-w'],
-       symtab_dump=flags['-s'],
-       exceptions=flags['-e'],
-       prologue=flags['-l'])'''
+# execute compiler
+tree_code = compile(input_stream=input_stream,
+                    input_name = input_file,
+                    tree_dump=flags['-t'],
+                    prologue=flags['-l'])
 
-if flags['-p']:
-    # generates pstats into the file 'pstats'
-    # see https://docs.python.org/3/library/profile.html
-    cProfile.run(interp_object, 'pstats')
-else:
-    exec(interp_object)
+print("# compiled version of '{}'".format(input_file))
+print("# NOTE: the env var PYTHONPATH has to point to the 'code' folder ")
+print("# of the Asteroid installation")
+print("")
+print("from asteroid_interp import walk")
+print("code = {}".format(str(tree_code)))
+print("walk(code)")
