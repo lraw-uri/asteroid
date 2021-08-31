@@ -350,4 +350,4 @@ function print_sudoku                                                         --
     end.
 --------------------------------------------------------------------------------
 
-solve_sudoku( demo_three ).
+solve_sudoku( demo_one).
