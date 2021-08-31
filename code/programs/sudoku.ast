@@ -1,0 +1,353 @@
+--------------------------------------------------------------------------------
+-----                                  Sudoku                              -----
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+-- A recursive back-tracking sudoku implementation written in Asteroid.       --
+--------------------------------------------------------------------------------
+-- Note that this implementation uses a (row,col) convention as opposed to    --
+-- the more common (col,row)/(x,y) standard. This allows us to have the input --  
+-- boards neatly formatted and in the order that they appear naturally, which --
+-- in turn should make adding new inputs to this program easy. (lines:60-90)  --
+--------------------------------------------------------------------------------
+------------------------------------------------------------------------Imports-
+load system "io".
+load system "math". -- mod function used by print_sudoku()
+
+-----------------------------------------------------------Cell/Board-Patterns--
+let DIGIT = pattern with (x:%integer) %if x <= 9 
+                                      and x >= 0.
+let COORDINATE = pattern with (row: %[*DIGIT]% ,col: %[*DIGIT]%).
+let BOARD = pattern with (grid:%list).
+let PREDEFINED_CELLS = pattern with (predefined:%list).
+let INITIAL_CELL = pattern with (initial:*COORDINATE).
+let SUDOKU_CELL = pattern with (*COORDINATE,*BOARD,*PREDEFINED_CELLS).
+let FULL_ROW = pattern with *SUDOKU_CELL %if col > 8.
+let COMPLETE_BOARD = pattern with *SUDOKU_CELL %if row > 8.
+let IMPOSSIBLE_BOARD = pattern with *SUDOKU_CELL %if row == initial@0 and 
+                                                     col == initial@1 and 
+                                                     grid@row@col == 10.
+let PREDEFINED_CELL = pattern with *SUDOKU_CELL %if (row,col) in predefined.
+-------------------------------------------------------------Sub-Grid-Patterns--
+let BOTTOM_RIGHT =  pattern with *COORDINATE %if col < 9 and row > 5
+                                             and col > 5 and row < 9.
+let BOTTOM_MIDDLE = pattern with *COORDINATE %if col < 6 and row > 5
+                                             and col > 2 and row < 9.
+let BOTTOM_LEFT =   pattern with *COORDINATE %if col < 3 and row > 5
+                                             and col >= 0 and row < 9.
+let MIDDLE_RIGHT =  pattern with *COORDINATE %if col > 5 and row > 2
+                                             and col < 9 and row < 6.
+let CENTER =        pattern with *COORDINATE %if col > 2 and row > 2
+                                             and col < 6 and row < 6.
+let MIDDLE_LEFT =   pattern with *COORDINATE %if col < 3 and row > 2
+                                             and col >= 0 and row < 6.
+let TOP_RIGHT =     pattern with *COORDINATE %if col > 5 and row < 3
+                                             and col < 9 and row >= 0.
+let TOP_MIDDLE =    pattern with *COORDINATE %if col < 6 and row < 3
+                                             and col > 2 and row >= 0.
+let TOP_LEFT =      pattern with *COORDINATE %if col < 3 and row < 3
+                                             and col >= 0 and row >= 0.
+----------------------------------------------------------Sub-Grid-Definitions--
+let SUBGRID_0 = [ (0,0), (0,1), (0,2), (1,0), (1,1), (1,2), (2,0), (2,1), (2,2)].
+let SUBGRID_1 = [ (0,3), (0,4), (0,5), (1,3), (1,4), (1,5), (2,3), (2,4), (2,5)].
+let SUBGRID_2 = [ (0,6), (0,7), (0,8), (1,6), (1,7), (1,8), (2,6), (2,7), (2,8)].
+let SUBGRID_3 = [ (3,0), (3,1), (3,2), (4,0), (4,1), (4,2), (5,0), (5,1), (5,2)].
+let SUBGRID_4 = [ (3,3), (3,4), (3,5), (4,3), (4,4), (4,5), (5,3), (5,4), (5,5)].
+let SUBGRID_5 = [ (3,6), (3,7), (3,8), (4,6), (4,7), (4,8), (5,6), (5,7), (5,8)].
+let SUBGRID_6 = [ (6,0), (6,1), (6,2), (7,0), (7,1), (7,2), (8,0), (8,1), (8,2)].
+let SUBGRID_7 = [ (6,3), (6,4), (6,5), (7,3), (7,4), (7,5), (8,3), (8,4), (8,5)].
+let SUBGRID_8 = [ (6,6), (6,7), (6,8), (7,6), (7,7), (7,8), (8,6), (8,7), (8,8)].
+----------------------------------------------------------------Example-Inputs--
+let demo_one = [ [  5 , 0 , 0 , 0 , 0 , 0 , 4 , 2 , 7 ],
+                 [  3 , 0 , 2 , 6 , 0 , 0 , 0 , 1 , 5 ],
+                 [  1 , 0 , 0 , 2 , 0 , 0 , 6 , 8 , 0 ],
+                 [  0 , 0 , 0 , 3 , 0 , 5 , 8 , 0 , 0 ],
+                 [  0 , 5 , 1 , 7 , 2 , 6 , 0 , 4 , 0 ],
+                 [  0 , 7 , 3 , 8 , 9 , 0 , 0 , 0 , 0 ],
+                 [  6 , 0 , 0 , 4 , 0 , 9 , 0 , 3 , 2 ],
+                 [  7 , 3 , 0 , 1 , 0 , 0 , 0 , 0 , 0 ],
+                 [  2 , 1 , 9 , 0 , 0 , 0 , 7 , 0 , 0 ] ].
+--------------------------------------------------------------------------------
+let demo_two = [ [  0 , 5 , 0 , 8 , 0 , 2 , 6 , 0 , 0 ],
+                 [  3 , 0 , 0 , 7 , 0 , 0 , 8 , 1 , 0 ],
+                 [  2 , 8 , 0 , 1 , 0 , 0 , 0 , 0 , 7 ],
+                 [  0 , 0 , 0 , 3 , 0 , 0 , 0 , 6 , 0 ],
+                 [  0 , 0 , 0 , 5 , 6 , 0 , 0 , 0 , 3 ],
+                 [  7 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 1 ],
+                 [  0 , 0 , 9 , 0 , 0 , 0 , 7 , 2 , 8 ],
+                 [  8 , 3 , 1 , 0 , 0 , 0 , 0 , 4 , 0 ],
+                 [  0 , 0 , 0 , 9 , 0 , 4 , 0 , 3 , 0 ] ].
+--------------------------------------------------------------------------------
+let demo_three = [ [  0 , 0 , 4 , 0 , 0 , 0 , 0 , 0 , 2 ],
+                   [  3 , 5 , 7 , 0 , 8 , 0 , 0 , 9 , 0 ],
+                   [  8 , 0 , 2 , 0 , 0 , 0 , 0 , 0 , 0 ],
+                   [  0 , 0 , 0 , 9 , 4 , 5 , 0 , 0 , 0 ],
+                   [  0 , 0 , 0 , 0 , 0 , 6 , 0 , 0 , 4 ],
+                   [  9 , 0 , 0 , 0 , 0 , 8 , 2 , 0 , 7 ],
+                   [  0 , 0 , 0 , 0 , 0 , 9 , 0 , 6 , 0 ],
+                   [  5 , 0 , 0 , 3 , 6 , 0 , 4 , 0 , 0 ],
+                   [  0 , 0 , 0 , 5 , 0 , 0 , 0 , 0 , 0 ] ].
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+function solve_sudoku                                                         --
+--------------------------------------------------------------------------------
+-- Driver function for the sukoku walker. This function handles intializing   --
+-- the predefined list and finding the intial point before calling the actual --
+-- walker.                                                                    --
+-- This function will print the initial(unsolved) sudoku, a blank line, and   --
+-- then the solved sudoku to the console.                                     --
+--------------------------------------------------------------------------------
+    with *BOARD do
+
+        global initial.
+        let initial = get_initial_cell(grid).
+
+        print_sudoku(grid).
+        println(""). 
+
+        try
+            walk_grid((0,0),grid,get_predefined(grid)).
+        catch Exception("Solved",grid) do
+            print_sudoku(grid). 
+        catch Exception("No Solution",grid) do
+            println("No solution exists for the input Sudoku cELLuriation.").
+        end.
+    end.
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+function walk_grid                                                            --
+--------------------------------------------------------------------------------
+-- This function is the recursive back-tracking sudoku walker.                --
+--------------------------------------------------------------------------------
+    with *FULL_ROW do
+        walk_grid(((row+1),0),grid,predefined).
+
+    orwith *COMPLETE_BOARD do 
+        throw Exception("Solved",grid).
+
+    orwith *IMPOSSIBLE_BOARD do
+        throw Exception("No Solution",grid).
+
+    orwith *PREDEFINED_CELL do
+        walk_grid((row,col+1),grid,predefined).
+        step_back((row,col),grid,predefined). 
+
+    orwith *SUDOKU_CELL do
+
+        for possible_value in 1 to 9 do
+            let grid@row@col = possible_value.
+
+            if check_conflictions((row,col),grid,predefined) do
+                walk_grid((row,col+1),grid,predefined).
+                step_back((row,col),grid,predefined).   
+            end.
+        end.
+    end.
+--------------------------------------------------------------------------------    
+
+--------------------------------------------------------------------------------
+function step_back                                                            --
+--------------------------------------------------------------------------------
+-- This function contains the "stepping backwards" procedure for the walker.  --
+-- When we step backwards, we must erase the 'failed attempt' that we just    --
+-- stepped back from. Otherwise, we would incorrectly raise row/col/subgrid   --
+-- conflictions.                                                              --
+--------------------------------------------------------------------------------
+    with *SUDOKU_CELL do
+
+        if col > 7 do
+            if not(((row+1),0) in predefined) do
+                let grid@(row+1)@0 = 0.
+            end.
+        else
+            if not ((row,(col+1)) in predefined) do
+                let grid@row@(col+1) = 0.
+            end.
+        end.   
+    end.
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+function get_subgrid                                                          --
+--------------------------------------------------------------------------------
+-- Function find_subgrid takes in a cells row,col coordinates and then        --
+-- determines and returns a list of all the row,col coordinates of all of the --
+-- cells from the same subgrid.                                               --
+-- Subgrid numbers:                                                           --
+--    0  |  1  |  2                                                           --
+--   ---------------                                                          --
+--    3  |  4  |  5                                                           --
+--   ---------------                                                          --
+--    6  |  7  |  8                                                           --
+--------------------------------------------------------------------------------
+    with *BOTTOM_RIGHT do
+        return SUBGRID_8.
+    orwith *BOTTOM_MIDDLE do
+        return SUBGRID_7.
+    orwith *BOTTOM_LEFT do
+        return SUBGRID_6.
+    orwith *MIDDLE_RIGHT do
+        return SUBGRID_5.
+    orwith *TOP_RIGHT do
+        return SUBGRID_2.
+    orwith *CENTER do
+        return SUBGRID_4.
+    orwith *MIDDLE_LEFT do
+        return SUBGRID_3.
+    orwith *TOP_MIDDLE do
+        return SUBGRID_1.
+    orwith *TOP_LEFT do
+        return SUBGRID_0.
+    end.
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+function check_conflictions                                                   --
+--------------------------------------------------------------------------------
+-- This function takes in a sudoku cell and checks for row, column, or        --
+-- subgrid conflictions. This function works by checking how many times the   --
+-- sudoku's cell's value is found in the row, column, and subgrid that it is  --
+-- located in. The idea is that when checking each, we should only find the   --
+-- value once. We check three times, so if we see that value more then three  --
+-- times we have a confliction.                                               --
+--------------------------------------------------------------------------------
+    with *SUDOKU_CELL do
+        let conflicts = 0.
+        let subgrid = get_subgrid((row,col)).
+
+        for idx in 0 to 8 do
+            
+            -- Check row
+            if grid@row@col == grid@row@idx do
+                let conflicts = conflicts + 1.
+            end.
+
+            -- Check column
+            if grid@row@col == grid@idx@col do
+                let conflicts = conflicts + 1.
+            end.
+
+            -- Check subgrid
+            let sub_row = (subgrid@idx)@0.
+            let sub_col = (subgrid@idx)@1.
+            if grid@row@col == grid@sub_row@sub_col do
+                let conflicts = conflicts + 1.
+            end.
+        end.
+
+        if conflicts > 3 do
+            return false.
+        end.
+        return true.
+    end.  
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+function get_predefined                                                       --
+-------------------------------------------------------------------------------- 
+-- The function takes in a sudoku grid and returns a list of the (row,col)    --
+-- coordinates of all of the predefined cells from that particular sudoku.    --
+--------------------------------------------------------------------------------
+    with *BOARD do
+
+        let cells = [].
+        let col = 0.
+        let row = 0.
+    
+        for (line:%list) in grid do
+            for *DIGIT in line do
+
+                if x =/= 0 do
+                    let cells = [ (row,col) | cells ]. 
+                end.
+
+                let col = col + 1.
+            end.
+
+            let row = row + 1.
+            let col = 0.
+        end.
+
+        return cells.
+    end.
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+function get_initial_cell                                                     --
+--------------------------------------------------------------------------------
+-- This function searches the sudoku board of the first instance of an empty  --
+-- cell. This fucntion then returns the (row,col) coordinates of the very      --
+-- first empty cell in the grid. If there are no empty cells, this function   --
+-- returns the last visited cell.                                             --
+--------------------------------------------------------------------------------
+    with *BOARD do
+
+        let col = 0.
+        let row = 0.
+
+        for (line:%list) in grid do
+            for *DIGIT in line do
+
+                if x == 0 do
+                    return (row,col).
+                end.
+                let col = col + 1.
+            end.
+            let row = row + 1.
+            let col = 0.
+        end.
+
+        return (row,col).
+    end.
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+function print_sudoku                                                         --
+--------------------------------------------------------------------------------
+-- This function takes in a sudoku board and then neatly prints that board to --
+-- the console.                                                               --
+--------------------------------------------------------------------------------
+    with *BOARD do
+
+        let row_counter = 0.
+
+        for (row:%list) in grid do
+
+            let col_counter = 0.
+
+            for *DIGIT in row do
+
+                if x == 0 do
+                    print("   ")
+                else do
+                    print(" "+x+" ").
+                end.
+
+                let col_counter = col_counter + 1.
+
+                if mod(col_counter,3) == 0 do
+
+                    if col_counter == 9 do
+                        println("").
+                    else do
+                        print("|").
+                    end.
+                end.
+            end.
+
+            let row_counter = row_counter + 1.
+
+            if mod(row_counter,3) == 0 do
+
+                if row_counter == 9 do
+                    return.
+                else do
+                    println("----------------------------").
+                end.
+            end.
+        end.
+    end.
+--------------------------------------------------------------------------------
+
+solve_sudoku( demo_three ).
