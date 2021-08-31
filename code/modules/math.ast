@@ -303,6 +303,26 @@ __retval__ = ('real', math.atan(x_val[1]))
 end
 
 ------------------------------------------------------------------
+function atan2
+------------------------------------------------------------------
+with (x,y) do return escape
+"
+import math
+global __retval__
+
+x_val = state.symbol_table.lookup_sym('x')
+y_val = state.symbol_table.lookup_sym('y')
+
+if x_val[0] not in ['integer','real']:
+  raise ValueError('unsupported type {} for atan2'.format(x_val[0]))
+elif y_val[0] not in ['integer','real']:
+  raise ValueError('unsupported type {} for atan2'.format(y_val[0]))
+
+__retval__ = ('real',math.atan2(x_val[1],y_val[1]))
+"
+end
+
+------------------------------------------------------------------
 function cos
 ------------------------------------------------------------------
 -- Return the cosine of x radians.
