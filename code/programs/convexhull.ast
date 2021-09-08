@@ -1,0 +1,577 @@
+--------------------------------------------------------------------------------
+-----                            Convex Hull                               -----
+--------------------------------------------------------------------------------
+-----                    Algorithm(s) Implemeneted:                        -----
+-----                    (1) Jarvis's March                                -----
+-----                    (2) Quickhull                                     -----
+-----                    (3) Graham Scan   *In Progress                    -----
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+load system "io".
+load system "random".
+load system "math".
+load system "sort".
+--------------------------------------------------------------------------------
+let MIN_Y = 0.
+let MIN_X = 0.
+let MAX_Y = 255.
+let MAX_X = 255.
+let MIN_POINTS = 20.
+let MAX_POINTS = 20.
+--------------------------------------------------------------------------------
+let COORDINATE = pattern with (x,y).
+let POS_INT = pattern with (x:%integer) %if x > 0.
+let NEG_INT = pattern with (x:%integer) %if x < 0.
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+function generate_coordinates                                                 --
+--------------------------------------------------------------------------------
+-- This function generates and returns a list of random Cartesian Coordinate  --
+-- system points. The length of the list, an integer, indicating the desired  --
+-- number of coordinates is the only parameter. Should a value less then      --
+-- three be passed in as the list length, a default value of 3 will be used   --
+-- instead.                                                                   --
+-- Cartesian Coordinate point format: 2-tuple: (x,y)                          --
+--------------------------------------------------------------------------------
+    with points:%integer do
+
+        if points < 3 do
+            let points = 3.
+        end.
+
+        let coordinates = [].
+
+        while points > 0 do
+
+            let x = randint(MIN_X,MAX_X).
+            let y = randint(MIN_Y,MAX_Y).
+
+            let coordinates = [ eval(COORDINATE) | coordinates ].
+
+            let points = points - 1.
+        end.
+
+        return coordinates.
+end.
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+function get_leftmost                                                         --
+--------------------------------------------------------------------------------
+-- This function takes in a list of coordinates, in an (x,y) 2-tuple form,    --
+-- and then searches this list for the leftmost point by comparing each       --
+-- coordinate pair's x value. Should multiple points have the same lowest x   --
+-- value, this function will then compare the conflicting coordinate pair's y --
+-- value for a lowest value. Should multiple points have the same lowest      --
+-- (x,y) value, This function will keep track of the first instance.Once the  --
+-- leftmost coordinate pair has been identified, this function will then      --
+-- return the index of that pair in the passed in list.                       --
+--------------------------------------------------------------------------------
+    with coordinates:%list do
+
+        let leftmost_value = ( MAX_X + 1, MAX_Y + 1 ).
+        let leftmost_index = 0.
+        let index = 0.
+
+        for *COORDINATE in coordinates do
+
+            if x < leftmost_value@0 do
+                let leftmost_value = eval(COORDINATE).
+                let leftmost_index = index.
+            elif x == leftmost_value@0 do
+                if y < leftmost_value@1 do
+                    let leftmost_value = eval(COORDINATE).
+                    let leftmost_index = index.
+                end.
+            end.
+
+            let index = index + 1.
+        end.
+
+    return leftmost_index.
+end.
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+function get_rightmost                                                        --
+--------------------------------------------------------------------------------
+-- This function takes in a list of coordinates, in an (x,y) 2-tuple form,    --
+-- and then searches this list for the leftmost point by comparing each       --
+-- coordinate pair's x value. Should multiple points have the same lowest x   --
+-- value, this function will then compare the conflicting coordinate pair's y --
+-- value for a lowest value. Should multiple points have the same lowest (x,y)--
+-- value, This function will keep track of the first instance. Once the       --
+-- leftmost coordinate pair has been identified, this function will then      --
+-- return the index of that pair in the passed in list.                       --
+--------------------------------------------------------------------------------
+    with coordinates:%list do
+
+        let leftmost_value = ( MIN_X - 1, MIN_Y - 1 ).
+        let leftmost_index = 0.
+        let index = 0.
+
+        for *COORDINATE in coordinates do
+
+            if x > leftmost_value@0 do
+                let leftmost_value = eval(COORDINATE).
+                let leftmost_index = index.
+            elif x == leftmost_value@0 do
+                if y > leftmost_value@1 do
+                    let leftmost_value = eval(COORDINATE).
+                    let leftmost_index = index.
+                end.
+            end.
+
+            let index = index + 1.
+        end.
+
+    return leftmost_index.
+end.
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+function get_bottommost                                                       --
+--------------------------------------------------------------------------------
+-- This function takes in a list of coordinates, in an (x,y) 2-tuple form,    --
+-- and then searches this list for the bottommost point by comparing each     --
+-- coordinate pair's y value. Should multiple points have the same lowest y   --
+-- value, this function will then compare the conflicting coordinate pair's x --
+-- value for a lowest value. Should multiple points have the same lowest (x,y)--
+-- value, This function will keep track of the first instance. Once the       --
+-- leftmost coordinate pair has been identified, this function will then      --
+-- return the index of that pair in the passed in list.                       --
+--------------------------------------------------------------------------------
+    with coordinates:%list do
+
+        let bottommost_value = ( MAX_X + 1, MAX_Y + 1 ).
+        let bottommost_index = 0.
+        let index = 0.
+
+        for *COORDINATE in coordinates do
+
+            if y < bottommost_value@1 do
+                let bottommost_value = eval(COORDINATE).
+                let bottommost_index = index.
+            elif y == bottommost_value@1 do
+                if x < bottommost_value@0 do
+                    let bottommost_value = eval(COORDINATE).
+                    let bottommost_index = index.
+                end.
+            end.
+
+            let index = index + 1.
+        end.
+
+    return bottommost_index.
+end.
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+function get_slope                                                            --
+--------------------------------------------------------------------------------
+-- This function takes in two points in a x,y 2-tuple form and then computes  --
+-- and returns the slope generated by a line connecting the first point to    --
+-- the second point. This function forces real number arithmatic and will     --
+-- return a real number.                                                      --
+--------------------------------------------------------------------------------
+    with ( (x1,y1), (x2,y2) ) do
+
+        if x1 == x2 do
+            let value = MAX_X + 1.
+        else
+            let value = (1.0*y1-y2) / (1.0*x1-x2).
+        end.
+
+        return value.
+    end.
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+function get_centroid                                                         --
+--------------------------------------------------------------------------------
+-- This function takes in a list of 2-dimentional x,y coordinates and then    --
+-- computes and returns a new point which is the exact center of all of the   --
+-- input point set. This is accomplished by averageing the x,y values from    --
+-- the points found in the input list.                                        --
+--------------------------------------------------------------------------------
+    with coordinates:%list do
+
+        let total_x = 0.
+        let total_y = 0.
+        let points = coordinates@length().
+
+        for *COORDINATE in coordinates do
+            let total_x = total_x + x.
+            let total_y = total_y + y.
+        end.
+
+        let centroid = ( (total_x / points) , (total_x / points) ).
+
+        return centroid.
+    end.
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+function line_distance                                                        --
+--------------------------------------------------------------------------------
+-- This function takes in two points, which indicate the endpoints of a line, --
+-- and an independant point. This function then caluclates and returns the    --
+-- shortest distance from the independant point and the line.                 --
+--------------------------------------------------------------------------------
+    with ( (x1,y1), (x2,y2), (x_point,y_point) ) do
+
+        let value = ((y_point-y1)*(x2-x1)) - ((y2-y1)*(x_point-x1)).
+
+        return abs(value).
+    end.
+--------------------------------------------------------------------------------        
+
+--------------------------------------------------------------------------------
+function orientation                                                          --
+--------------------------------------------------------------------------------
+-- This function allows us to determine the orientation of a triangle that    --
+-- has been plotted onto an 2-dimensional plane. This in turn allows us to    --
+-- evaluate the position of a point(point 2) in relation to a line(point 1 to --
+-- point 3).                                                                  --
+-- Consider the following:                                                    --
+-- p1: point 1 with (x1,y1)                                                   --
+-- p2: point 2 with (x2,y2)                                                   --
+-- p3: point 3 with (x3,y3)                                                   --
+-- TRIANGLE:                                                                  --
+-- p1                                                                         --
+-- |\                                                                         --
+-- | \                                                                        --
+-- |  \                                                                       --
+-- |___\                                                                      --
+-- p2   p3                                                                    --
+-- This triable would return 1 as point 2 is to the left of the line formed   --
+-- between point 1 and point 3.                                               --
+-- TRIANGLE:                                                                  --
+-- p1                                                                         --
+-- \                                                                          --
+--  \ p2                                                                      --
+--   \                                                                        --
+--    \                                                                       --
+--     p3                                                                     --
+-- This triangle is not really a triangle as point 2 is colinear with         --
+-- the line formed between point 1 and point 3. This would return 0.          --
+-- TRIANGLE:                                                                  --
+-- p1____ p2                                                                  --
+--   \   |                                                                    --
+--    \  |                                                                    --
+--     \ |                                                                    --
+--      \|                                                                    --
+--       p3                                                                   --
+-- This triangle would return -1 as point 2 is to the right of the line       --
+-- formed between point 1 and point 3.                                        --
+--------------------------------------------------------------------------------
+    with ( (x1,y1), (x2,y2), (x3,y3) ) do
+    
+        let value = ((y2-y1)*(x3-x2) - (x2-x1)*(y3-y2)).
+
+        if value is *POS_INT do
+            return 1.
+        elif value is *NEG_INT do
+            return -1.
+        else
+            return value.
+        end.
+    end.
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+function orientation_to_bottommost                                            --
+--------------------------------------------------------------------------------
+-- Quicksort helper                                                           --
+-- This function allows us to use the angle, or orientation, of two points,   --
+-- p1 and p2, in regaurds to the bottommost point in the plane as the         --
+-- comparision for sorting.                                                   --
+-- This function expects 2 things:                                            --
+--                                                                            --
+-- This function expects to have access to the list of coordinates, called    --
+-- 'coordinates'. And..                                                       --
+--                                                                            --
+-- This function expects to have access to a variable called bottommost,      --
+-- which in turn is expected to be the index of the bottommost point in the   --
+-- plane in the coordinates list.                                             --
+--------------------------------------------------------------------------------
+    with ( p1 , p2 ) do
+    
+        let value = orientation(coordinates@bottommost,p1,p2).
+
+        if value is *POS_INT do
+            return 1.
+        else
+            return 0.
+        end.
+    end.
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+function orientation_to_centroid                                              --
+--------------------------------------------------------------------------------
+-- Quicksort helper                                                           --
+-- This function allows us to compare two points on a 2-dimentional plane in  --
+-- x,y 2-tuple format by establishing and enumerating the position of each    --
+-- point in relation to the centroid. Each angle defined in this fuction is a --
+-- value which represents the corresponding points angle to the centroid.     --
+-- We then compare the two angle to see which is greater/less then.           --
+--                                                                            --
+-- This essentially allows us to sorts points on an x,y plane in              --
+-- clockwise/counter-clockwise order.                                         --
+--                                                                            --
+-- This function expects that a centroid will have been previously            --
+-- generated with the get_centroid() function and appropriatly                --
+-- named 'centroid'. This is asserted.                                        --
+--------------------------------------------------------------------------------
+    with ( (x1,y1), (x2,y2) ) do
+    
+        assert( centroid ).
+
+        let angle1 = atan2(y1 - centroid@1,x1 - centroid@0).
+        let angle2 = atan2(y2 - centroid@1,x2 - centroid@0).
+
+        if angle1 > angle2 do
+            return 1.
+        elif angle2 < angle1 do
+            return 0.
+        else
+            return 0.
+        end.
+
+    end.
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+function jarvis_march                                                         --
+--------------------------------------------------------------------------------
+-- O(n^2)                                                                     --
+-- This function is an implementation of the Gift-Wrapping/Jarvis' March      --
+-- Convex Hull Algorithm.                                                     --
+-- https://en.wikipedia.org/wiki/Gift_wrapping_algorithm                      --
+--------------------------------------------------------------------------------
+    with (coordinates:%list,points:%integer) do
+
+        -- let points = randint( MIN_POINTS , MAX_POINTS ).
+        -- let coordinates = generate_coordinates( points ).
+        let leftmost = get_leftmost( coordinates ).
+
+        let hull = [].
+        let new_point = leftmost.
+
+        while (true) do
+
+            let hull = [ coordinates@new_point | hull ].
+            let maybe = mod( (new_point + 1), (points-1) ).
+
+            for i in 0 to (points-1) do
+
+                if (orientation(coordinates@new_point,coordinates@i,coordinates@maybe) == -1) do
+                    let maybe = i.
+                end.
+            end.
+
+            let new_point = maybe.
+
+            -- If we have come back around the to the very first
+            --  point, we have completed the hull.
+            if new_point == leftmost do
+                break.
+            end.
+        end.    
+
+        -- Return the final product, a list containing the points 
+        -- in the hull.
+        return hull.
+    end.
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+function quick_hull                                                           --
+--------------------------------------------------------------------------------
+-- O(n*Log(n))                                                                --
+-- This function demonstrates the quickhull algorithm. This method is built   --
+-- on the back of the quicksort alrorithm.                                    --
+-- https://en.wikipedia.org/wiki/Quickhull                                    --
+--------------------------------------------------------------------------------
+    with (coordinates:%list,points:%integer,(x1,y1),(x2,y2),side:%integer) do
+
+        let idx = -1.
+        let max_distance = 0.
+
+        for i in 0 to (points-1) do
+
+            let temp = line_distance((x1,y1),(x2,y2),coordinates@i).
+
+            if ( orientation((x1,y1),coordinates@i,(x2,y2)) == side ) and ( temp > max_distance ) do
+                let idx = i.
+                let max_distance = temp.
+            end.
+
+        end.
+
+        -- Base case/end condition.
+        if idx == -1 do
+
+            if side < 0 do
+                hull@append((x1,y1)).
+            else do
+                hull@append((x2,y2)).
+            end.
+
+            return.
+        end.
+
+        -- recurse
+        quick_hull(coordinates,points,coordinates@idx,(x1,y1), -(orientation(coordinates@idx,(x2,y2),(x1,y1)))).
+        quick_hull(coordinates,points,coordinates@idx,(x2,y2), -(orientation(coordinates@idx,(x1,y1),(x2,y2)))).
+    end.
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+function graham_scan                                                          --
+--------------------------------------------------------------------------------
+-- O(n*Log(n))                                                                --
+-- This function is an implementation of the Graham Scan Convex Hull          --
+-- Algorithm.                                                                 --
+-- https://en.wikipedia.org/wiki/Graham_scan                                  --
+--------------------------------------------------------------------------------
+    with (coordinates:%list,points:%integer) do
+
+        let points = points - 1.
+        let clean_coords = [].
+        let point_zero = coordinates@bottommost.
+        -- let clean_coords = [ point_zero | [] ].
+        let coordinates = sort(orientation_to_bottommost,coordinates)@reverse().
+        println(coordinates).
+
+        -- If two different points share the same angle from the 
+        -- bottommost point, then we only want the point with the 
+        -- greatest distance to the bottommost as the other cannot 
+        -- be part of the hull.
+        for idx in 0 to (points) do
+            
+            if idx < (points-1) do
+                while (( orientation(point_zero, coordinates@(idx), coordinates@(idx+1) ) == 0 )) do
+
+                    let idx = idx + 1.
+
+                    if idx <= (points -2) do
+                        break.
+                    end.
+
+                end.
+            end.
+            
+            let clean_coords = [ coordinates@idx | clean_coords ].
+        end.
+
+        let clean_coords = clean_coords@reverse().
+
+        let hull = [ clean_coords@2 |clean_coords@1 | clean_coords@0 | [] ].
+        let cleaned_points = clean_coords@length()-1.
+
+        for idx in 3 to (cleaned_points) do
+
+            if (hull@length() > 1) do
+
+                while (orientation(hull@0,hull@1,clean_coords@idx) =/= 1)  do
+
+                    hull@pop(0).
+
+                    if (hull@length() == 1) do
+                        break.
+                    end.
+                end.
+
+                let hull = [ clean_coords@idx | hull ].
+            end.
+        end.
+
+        return hull.
+    end.
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+function display_hull                                                         --
+--------------------------------------------------------------------------------
+-- An Escape function, display_hull() displays both all of the points on the  --
+-- plane in addition to drawing the convex hull.                              --
+--                                                                            --
+-- This function utilizes the matplotlib.pyplot library from Python.          --
+-- It is expected that this library is already installed on the host machine. --
+--                                                                            --
+-- The points are drawn as blue and the line is colored red.                  --
+--------------------------------------------------------------------------------
+    with ( coordinates:%list, hull:%list ) do return escape
+"
+import matplotlib.pyplot as plt
+global __retval__
+
+coordinates = state.symbol_table.lookup_sym('coordinates')
+hull = state.symbol_table.lookup_sym('hull')
+size = 500
+
+# Populate all coordinates into the plane
+for pair in coordinates[1]:
+    (TUP,[(INT,x),(INT,y)]) = pair
+    plt.scatter(x, y, s=size,c='b')
+
+# Get the last node in the hull and draw it first so we get a completed
+# circle/hull.
+(TUP,[(INT,x2),(INT,y2)]) = (hull[1])[-1]
+
+for pair in hull[1]:
+    (TUP,[(INT,x1),(INT,y1)]) = pair
+    plt.plot((x1, x2), (y1, y2),c='r')
+    x2 = x1
+    y2 = y1
+
+plt.show()
+plt.savefig('out.png')
+
+__retval__ = ('real', 1.0)
+"
+    end.
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+function quick_hull_driver                                                    --
+--------------------------------------------------------------------------------
+-- This is the driver function for the quick hull algorithm. This function    --
+-- initialize the leftmost and rightmost point variables, run the actual      --
+-- quickhull algorithm, and then sort the convex hull points.                 --
+-- This function then returns the list of points in the hull.                 --
+--------------------------------------------------------------------------------
+    with (coordinates:%list,points:%integer) do
+
+        let hull = [].
+        let minX = get_leftmost(coordinates).
+        let maxX = get_rightmost(coordinates).
+
+        quick_hull(coordinates,points, coordinates@minX, coordinates@maxX,  1).
+        quick_hull(coordinates,points, coordinates@minX, coordinates@maxX, -1).
+
+        -- Quickhull does not return our list of points sorted, we must sort them
+        -- if we wish to draw a nice line.
+
+        let centroid = get_centroid( hull ).
+        let newHull = sort ( orientation_to_centroid , hull ).
+
+        return hull.
+    end.
+--------------------------------------------------------------------------------
+
+--------------------- Driver Code/Testing --------------------------------------
+
+let points = randint( MIN_POINTS , MAX_POINTS ).
+let coordinates = generate_coordinates( points ).
+let test = jarvis_march(coordinates,points).
+display_hull(coordinates,test).
+
+
+-- let coordinates = [(191,188),(214,128),(69,38),(62,178),(10,186),(143,136),(148,193),(246,160),(115,51),(182,250)].
+-- let bottommost = get_bottommost( coordinates ).
+-- let otherTest = graham_scan(coordinates,points).
