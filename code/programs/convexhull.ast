@@ -19,13 +19,18 @@ let MIN_Y = 0.
 let MIN_X = 0.
 let MAX_Y = 255.
 let MAX_X = 255.
-let MIN_POINTS = 5.
+let MIN_POINTS = 4.
 let MAX_POINTS = 40.
 --------------------------------------------------------------------------------
 let POS_INT = pattern with (x:%integer) %if x > 0.
 let NEG_INT = pattern with (x:%integer) %if x < 0.
 let COORDINATE = pattern with (x,y).
 let COORDINATE_LIST = pattern with coordinates:%list.
+let POINT_ONE = pattern with p1:(x1,y1).
+let POINT_TWO = pattern with p2:(x2,y2).
+let POINT_THREE = pattern with p3:(x3,y3).
+let TWO_POINTS = pattern with ( *POINT_ONE , *POINT_TWO ).
+let THREE_POINTS = pattern with ( *POINT_ONE , *POINT_TWO , *POINT_THREE ).
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
@@ -179,7 +184,7 @@ function get_slope                                                            --
 -- the second point. This function forces real number arithmatic and will     --
 -- return a real number.                                                      --
 --------------------------------------------------------------------------------
-    with ( (x1,y1), (x2,y2) ) do
+    with *TWO_POINTS do
 
         if x1 == x2 do
             let value = MAX_X + 1.
@@ -222,10 +227,11 @@ function line_distance                                                        --
 -- This function takes in two points, which indicate the endpoints of a line, --
 -- and an independant point. This function then caluclates and returns the    --
 -- shortest distance from the independant point and the line.                 --
+-- The line points are expected to the the first two.                         --
 --------------------------------------------------------------------------------
-    with ( (x1,y1), (x2,y2), (x_point,y_point) ) do
+    with *THREE_POINTS do
 
-        let value = ((y_point-y1)*(x2-x1)) - ((y2-y1)*(x_point-x1)).
+        let value = ((y3-y1)*(x2-x1)) - ((y2-y1)*(x3-x1)).
 
         return abs(value).
     end.
@@ -270,7 +276,7 @@ function orientation                                                          --
 -- This triangle would return -1 as point 2 is to the right of the line       --
 -- formed between point 1 and point 3.                                        --
 --------------------------------------------------------------------------------
-    with ( (x1,y1), (x2,y2), (x3,y3) ) do
+    with *THREE_POINTS do
     
         let value = ((y2-y1)*(x3-x2) - (x2-x1)*(y3-y2)).
 
@@ -301,7 +307,7 @@ function orientation_to_bottommost                                            --
 -- which in turn is expected to be the index of the bottommost point in the   --
 -- plane in the coordinates list.                                             --
 --------------------------------------------------------------------------------
-    with ( p1 , p2 ) do
+    with *TWO_POINTS do
     
         let value = orientation(coordinates@0,p1,p2).
 
@@ -330,7 +336,7 @@ function orientation_to_centroid                                              --
 -- generated with the get_centroid() function and appropriatly                --
 -- named 'centroid'. This is asserted.                                        --
 --------------------------------------------------------------------------------
-    with ( (x1,y1), (x2,y2) ) do
+    with *TWO_POINTS do
     
         assert( centroid ).
 
@@ -353,13 +359,13 @@ function swap                                                                 --
 --------------------------------------------------------------------------------
 -- This function swaps two elements in a 1d list.                             --
 --------------------------------------------------------------------------------
-with ( array:%list , idx1:%integer , idx2:%integer ) do
+    with ( array:%list , idx1:%integer , idx2:%integer ) do
 
-    let temp = array@idx1.
-    let array@idx1 = array@idx2.
-    let array@idx2 = temp.
+        let temp = array@idx1.
+        let array@idx1 = array@idx2.
+        let array@idx2 = temp.
 
-    return array.
+        return array.
     end.
 --------------------------------------------------------------------------------    
 
@@ -398,8 +404,7 @@ function jarvis_march                                                         --
             end.
         end.    
 
-        -- Return the final product, a list containing the points 
-        -- in the hull.
+        -- Return the hull.
         return hull.
     end.
 --------------------------------------------------------------------------------
@@ -412,7 +417,7 @@ function quick_hull                                                           --
 -- on the back of the quicksort alrorithm.                                    --
 -- https://en.wikipedia.org/wiki/Quickhull                                    --
 --------------------------------------------------------------------------------
-    with (*COORDINATE_LIST,points:%integer,(x1,y1),(x2,y2),side:%integer) do
+    with (*COORDINATE_LIST,points:%integer,*TWO_POINTS,side:%integer) do
 
         let idx = -1.
         let max_distance = 0.
@@ -427,7 +432,6 @@ function quick_hull                                                           --
                 let idx = i.
                 let max_distance = temp.
             end.
-
         end.
 
         -- Base case/end condition.
@@ -443,9 +447,9 @@ function quick_hull                                                           --
         end.
 
         -- recurse
-        quick_hull(coordinates,points,coordinates@idx,(x1,y1), 
+        quick_hull(coordinates,points,(coordinates@idx,(x1,y1)), 
                     -(orientation(coordinates@idx,(x2,y2),(x1,y1)))).
-        quick_hull(coordinates,points,coordinates@idx,(x2,y2), 
+        quick_hull(coordinates,points,(coordinates@idx,(x2,y2)), 
                     -(orientation(coordinates@idx,(x1,y1),(x2,y2)))).
     end.
 --------------------------------------------------------------------------------
@@ -575,8 +579,8 @@ function quick_hull_driver                                                    --
         let minX = get_leftmost(coordinates).
         let maxX = get_rightmost(coordinates).
 
-        quick_hull(coordinates,points, coordinates@minX, coordinates@maxX,  1).
-        quick_hull(coordinates,points, coordinates@minX, coordinates@maxX, -1).
+        quick_hull(coordinates,points, (coordinates@minX, coordinates@maxX),  1).
+        quick_hull(coordinates,points, (coordinates@minX, coordinates@maxX), -1).
 
         -- Quickhull does not return our list of points sorted, we must sort them
         -- if we wish to draw a nice line.
@@ -605,3 +609,4 @@ else
 end.
 
 display_hull(coordinates,test).
+----------------------------------------------------------------------------END-
