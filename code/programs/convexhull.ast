@@ -4,8 +4,11 @@
 -----                    Algorithm(s) Implemeneted:                        -----
 -----                    (1) Jarvis's March                                -----
 -----                    (2) Quickhull                                     -----
------                    (3) Graham Scan   *In Progress                    -----
+-----                    (3) Graham Scan                                   -----
 --------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+let example_algorithm = 1. -- Select the desired algorithm to run from     -----
+----------------------------- integer values indicated above.              -----
 --------------------------------------------------------------------------------
 load system "io".
 load system "random".
@@ -16,12 +19,13 @@ let MIN_Y = 0.
 let MIN_X = 0.
 let MAX_Y = 255.
 let MAX_X = 255.
-let MIN_POINTS = 20.
-let MAX_POINTS = 20.
+let MIN_POINTS = 5.
+let MAX_POINTS = 40.
 --------------------------------------------------------------------------------
-let COORDINATE = pattern with (x,y).
 let POS_INT = pattern with (x:%integer) %if x > 0.
 let NEG_INT = pattern with (x:%integer) %if x < 0.
+let COORDINATE = pattern with (x,y).
+let COORDINATE_LIST = pattern with coordinates:%list.
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
@@ -68,7 +72,7 @@ function get_leftmost                                                         --
 -- leftmost coordinate pair has been identified, this function will then      --
 -- return the index of that pair in the passed in list.                       --
 --------------------------------------------------------------------------------
-    with coordinates:%list do
+    with *COORDINATE_LIST do
 
         let leftmost_value = ( MAX_X + 1, MAX_Y + 1 ).
         let leftmost_index = 0.
@@ -105,7 +109,7 @@ function get_rightmost                                                        --
 -- leftmost coordinate pair has been identified, this function will then      --
 -- return the index of that pair in the passed in list.                       --
 --------------------------------------------------------------------------------
-    with coordinates:%list do
+    with *COORDINATE_LIST do
 
         let leftmost_value = ( MIN_X - 1, MIN_Y - 1 ).
         let leftmost_index = 0.
@@ -142,7 +146,7 @@ function get_bottommost                                                       --
 -- leftmost coordinate pair has been identified, this function will then      --
 -- return the index of that pair in the passed in list.                       --
 --------------------------------------------------------------------------------
-    with coordinates:%list do
+    with *COORDINATE_LIST do
 
         let bottommost_value = ( MAX_X + 1, MAX_Y + 1 ).
         let bottommost_index = 0.
@@ -195,7 +199,7 @@ function get_centroid                                                         --
 -- input point set. This is accomplished by averageing the x,y values from    --
 -- the points found in the input list.                                        --
 --------------------------------------------------------------------------------
-    with coordinates:%list do
+    with *COORDINATE_LIST do
 
         let total_x = 0.
         let total_y = 0.
@@ -299,11 +303,11 @@ function orientation_to_bottommost                                            --
 --------------------------------------------------------------------------------
     with ( p1 , p2 ) do
     
-        let value = orientation(coordinates@bottommost,p1,p2).
+        let value = orientation(coordinates@0,p1,p2).
 
         if value is *POS_INT do
             return 1.
-        else
+        else 
             return 0.
         end.
     end.
@@ -345,6 +349,21 @@ function orientation_to_centroid                                              --
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
+function swap                                                                 --
+--------------------------------------------------------------------------------
+-- This function swaps two elements in a 1d list.                             --
+--------------------------------------------------------------------------------
+with ( array:%list , idx1:%integer , idx2:%integer ) do
+
+    let temp = array@idx1.
+    let array@idx1 = array@idx2.
+    let array@idx2 = temp.
+
+    return array.
+    end.
+--------------------------------------------------------------------------------    
+
+--------------------------------------------------------------------------------
 function jarvis_march                                                         --
 --------------------------------------------------------------------------------
 -- O(n^2)                                                                     --
@@ -352,12 +371,9 @@ function jarvis_march                                                         --
 -- Convex Hull Algorithm.                                                     --
 -- https://en.wikipedia.org/wiki/Gift_wrapping_algorithm                      --
 --------------------------------------------------------------------------------
-    with (coordinates:%list,points:%integer) do
+    with (*COORDINATE_LIST,points:%integer) do
 
-        -- let points = randint( MIN_POINTS , MAX_POINTS ).
-        -- let coordinates = generate_coordinates( points ).
         let leftmost = get_leftmost( coordinates ).
-
         let hull = [].
         let new_point = leftmost.
 
@@ -396,7 +412,7 @@ function quick_hull                                                           --
 -- on the back of the quicksort alrorithm.                                    --
 -- https://en.wikipedia.org/wiki/Quickhull                                    --
 --------------------------------------------------------------------------------
-    with (coordinates:%list,points:%integer,(x1,y1),(x2,y2),side:%integer) do
+    with (*COORDINATE_LIST,points:%integer,(x1,y1),(x2,y2),side:%integer) do
 
         let idx = -1.
         let max_distance = 0.
@@ -405,7 +421,9 @@ function quick_hull                                                           --
 
             let temp = line_distance((x1,y1),(x2,y2),coordinates@i).
 
-            if ( orientation((x1,y1),coordinates@i,(x2,y2)) == side ) and ( temp > max_distance ) do
+            if ( orientation((x1,y1),coordinates@i,(x2,y2)) == side ) and 
+               ( temp > max_distance ) do
+
                 let idx = i.
                 let max_distance = temp.
             end.
@@ -425,8 +443,10 @@ function quick_hull                                                           --
         end.
 
         -- recurse
-        quick_hull(coordinates,points,coordinates@idx,(x1,y1), -(orientation(coordinates@idx,(x2,y2),(x1,y1)))).
-        quick_hull(coordinates,points,coordinates@idx,(x2,y2), -(orientation(coordinates@idx,(x1,y1),(x2,y2)))).
+        quick_hull(coordinates,points,coordinates@idx,(x1,y1), 
+                    -(orientation(coordinates@idx,(x2,y2),(x1,y1)))).
+        quick_hull(coordinates,points,coordinates@idx,(x2,y2), 
+                    -(orientation(coordinates@idx,(x1,y1),(x2,y2)))).
     end.
 --------------------------------------------------------------------------------
 
@@ -438,20 +458,24 @@ function graham_scan                                                          --
 -- Algorithm.                                                                 --
 -- https://en.wikipedia.org/wiki/Graham_scan                                  --
 --------------------------------------------------------------------------------
-    with (coordinates:%list,points:%integer) do
+    with (*COORDINATE_LIST,points:%integer) do
+
+        global bottommost.
+        let bottommost = get_bottommost(coordinates).
 
         let points = points - 1.
-        let clean_coords = [].
         let point_zero = coordinates@bottommost.
-        -- let clean_coords = [ point_zero | [] ].
-        let coordinates = sort(orientation_to_bottommost,coordinates)@reverse().
-        println(coordinates).
+        let clean_coords = [ point_zero ].
+
+        let *COORDINATE_LIST = swap(coordinates,0,bottommost).
+        let *COORDINATE_LIST = sort(orientation_to_bottommost,coordinates)@reverse().
+        let *COORDINATE_LIST = [ coordinates@pop() | coordinates ].
 
         -- If two different points share the same angle from the 
         -- bottommost point, then we only want the point with the 
         -- greatest distance to the bottommost as the other cannot 
-        -- be part of the hull.
-        for idx in 0 to (points) do
+        -- be part of the hull. 
+        for idx in 1 to (points) do
             
             if idx < (points-1) do
                 while (( orientation(point_zero, coordinates@(idx), coordinates@(idx+1) ) == 0 )) do
@@ -469,7 +493,6 @@ function graham_scan                                                          --
         end.
 
         let clean_coords = clean_coords@reverse().
-
         let hull = [ clean_coords@2 |clean_coords@1 | clean_coords@0 | [] ].
         let cleaned_points = clean_coords@length()-1.
 
@@ -505,14 +528,14 @@ function display_hull                                                         --
 --                                                                            --
 -- The points are drawn as blue and the line is colored red.                  --
 --------------------------------------------------------------------------------
-    with ( coordinates:%list, hull:%list ) do return escape
+    with ( *COORDINATE_LIST, hull:%list ) do return escape
 "
 import matplotlib.pyplot as plt
 global __retval__
 
 coordinates = state.symbol_table.lookup_sym('coordinates')
 hull = state.symbol_table.lookup_sym('hull')
-size = 500
+size = 25
 
 # Populate all coordinates into the plane
 for pair in coordinates[1]:
@@ -545,8 +568,9 @@ function quick_hull_driver                                                    --
 -- quickhull algorithm, and then sort the convex hull points.                 --
 -- This function then returns the list of points in the hull.                 --
 --------------------------------------------------------------------------------
-    with (coordinates:%list,points:%integer) do
+    with (*COORDINATE_LIST,points:%integer) do
 
+        global hull.
         let hull = [].
         let minX = get_leftmost(coordinates).
         let maxX = get_rightmost(coordinates).
@@ -557,10 +581,11 @@ function quick_hull_driver                                                    --
         -- Quickhull does not return our list of points sorted, we must sort them
         -- if we wish to draw a nice line.
 
+        global centroid.
         let centroid = get_centroid( hull ).
         let newHull = sort ( orientation_to_centroid , hull ).
 
-        return hull.
+        return newHull.
     end.
 --------------------------------------------------------------------------------
 
@@ -568,10 +593,15 @@ function quick_hull_driver                                                    --
 
 let points = randint( MIN_POINTS , MAX_POINTS ).
 let coordinates = generate_coordinates( points ).
-let test = jarvis_march(coordinates,points).
+
+if example_algorithm == 1 do
+    let test = jarvis_march(coordinates,points).
+elif example_algorithm == 2 do
+    let test = quick_hull_driver(coordinates,points).
+elif example_algorithm == 3 do
+    let test = graham_scan(coordinates,points).
+else
+    exit("example_algorithm set to unknown value.").
+end.
+
 display_hull(coordinates,test).
-
-
--- let coordinates = [(191,188),(214,128),(69,38),(62,178),(10,186),(143,136),(148,193),(246,160),(115,51),(182,250)].
--- let bottommost = get_bottommost( coordinates ).
--- let otherTest = graham_scan(coordinates,points).
