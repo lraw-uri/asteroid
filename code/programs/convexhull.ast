@@ -26,10 +26,12 @@ let POS_INT = pattern with (x:%integer) %if x > 0.
 let NEG_INT = pattern with (x:%integer) %if x < 0.
 let COORDINATE = pattern with (x,y).
 let COORDINATE_LIST = pattern with coordinates:%list.
-let POINT_ONE = pattern with p1:(x1,y1).
-let POINT_TWO = pattern with p2:(x2,y2).
+let POINTS = pattern with points:%integer.
+let COORDINATES = pattern with ( *COORDINATE_LIST , *POINTS ).
+let POINT_ONE =   pattern with p1:(x1,y1).
+let POINT_TWO =   pattern with p2:(x2,y2).
 let POINT_THREE = pattern with p3:(x3,y3).
-let TWO_POINTS = pattern with ( *POINT_ONE , *POINT_TWO ).
+let TWO_POINTS =   pattern with ( *POINT_ONE , *POINT_TWO ).
 let THREE_POINTS = pattern with ( *POINT_ONE , *POINT_TWO , *POINT_THREE ).
 --------------------------------------------------------------------------------
 
@@ -43,7 +45,7 @@ function generate_coordinates                                                 --
 -- instead.                                                                   --
 -- Cartesian Coordinate point format: 2-tuple: (x,y)                          --
 --------------------------------------------------------------------------------
-    with points:%integer do
+    with *POINTS do
 
         if points < 3 do
             let points = 3.
@@ -377,7 +379,7 @@ function jarvis_march                                                         --
 -- Convex Hull Algorithm.                                                     --
 -- https://en.wikipedia.org/wiki/Gift_wrapping_algorithm                      --
 --------------------------------------------------------------------------------
-    with (*COORDINATE_LIST,points:%integer) do
+    with *COORDINATES do
 
         let leftmost = get_leftmost( coordinates ).
         let hull = [].
@@ -417,17 +419,20 @@ function quick_hull                                                           --
 -- on the back of the quicksort alrorithm.                                    --
 -- https://en.wikipedia.org/wiki/Quickhull                                    --
 --------------------------------------------------------------------------------
-    with (*COORDINATE_LIST,points:%integer,*TWO_POINTS,side:%integer) do
+    with (*COORDINATE_LIST,*POINTS,*TWO_POINTS,side:%integer) do
 
         let idx = -1.
         let max_distance = 0.
 
         for i in 0 to (points-1) do
+            let temp = line_distance( eval(*POINT_ONE),
+                                      eval(*POINT_TWO),
+                                      coordinates@i).
 
-            let temp = line_distance((x1,y1),(x2,y2),coordinates@i).
-
-            if ( orientation((x1,y1),coordinates@i,(x2,y2)) == side ) and 
-               ( temp > max_distance ) do
+            if ( orientation( eval(*POINT_ONE),
+                              coordinates@i,
+                              eval(*POINT_TWO)) == side )
+               and ( temp > max_distance ) do
 
                 let idx = i.
                 let max_distance = temp.
@@ -438,19 +443,19 @@ function quick_hull                                                           --
         if idx == -1 do
 
             if side < 0 do
-                hull@append((x1,y1)).
+                hull@append( eval( *POINT_ONE )).
             else do
-                hull@append((x2,y2)).
+                hull@append( eval( *POINT_TWO )).
             end.
 
             return.
         end.
 
         -- recurse
-        quick_hull(coordinates,points,(coordinates@idx,(x1,y1)), 
-                    -(orientation(coordinates@idx,(x2,y2),(x1,y1)))).
-        quick_hull(coordinates,points,(coordinates@idx,(x2,y2)), 
-                    -(orientation(coordinates@idx,(x1,y1),(x2,y2)))).
+        quick_hull(coordinates,points,(coordinates@idx, eval(*POINT_ONE )), 
+                    -(orientation(coordinates@idx, eval(*POINT_TWO), eval(*POINT_ONE)))).
+        quick_hull(coordinates,points,(coordinates@idx, eval(*POINT_TWO)), 
+                    -(orientation(coordinates@idx, eval(*POINT_ONE), eval(*POINT_TWO)))).
     end.
 --------------------------------------------------------------------------------
 
@@ -462,7 +467,7 @@ function graham_scan                                                          --
 -- Algorithm.                                                                 --
 -- https://en.wikipedia.org/wiki/Graham_scan                                  --
 --------------------------------------------------------------------------------
-    with (*COORDINATE_LIST,points:%integer) do
+    with *COORDINATES do
 
         global bottommost.
         let bottommost = get_bottommost(coordinates).
@@ -572,7 +577,7 @@ function quick_hull_driver                                                    --
 -- quickhull algorithm, and then sort the convex hull points.                 --
 -- This function then returns the list of points in the hull.                 --
 --------------------------------------------------------------------------------
-    with (*COORDINATE_LIST,points:%integer) do
+    with *COORDINATES do
 
         global hull.
         let hull = [].
@@ -595,18 +600,18 @@ function quick_hull_driver                                                    --
 
 --------------------- Driver Code/Testing --------------------------------------
 
-let points = randint( MIN_POINTS , MAX_POINTS ).
-let coordinates = generate_coordinates( points ).
+let *POINTS = randint( MIN_POINTS , MAX_POINTS ).
+let *COORDINATE_LIST = generate_coordinates( points ).
 
 if example_algorithm == 1 do
-    let test = jarvis_march(coordinates,points).
+    let hull = jarvis_march(coordinates,points).
 elif example_algorithm == 2 do
-    let test = quick_hull_driver(coordinates,points).
+    let hull = quick_hull_driver(coordinates,points).
 elif example_algorithm == 3 do
-    let test = graham_scan(coordinates,points).
+    let hull = graham_scan(coordinates,points).
 else
     exit("example_algorithm set to unknown value.").
 end.
 
-display_hull(coordinates,test).
+display_hull(coordinates,hull).
 ----------------------------------------------------------------------------END-
