@@ -1,0 +1,54 @@
+load system "io".
+
+structure Circle with
+  data xCor.
+  data yCor.
+  data radius.
+
+  -- Calcluate Area 
+  function area with () do
+    return pi * this@radius * this@radius
+  end
+
+  -- Calculate Circumference
+  function circumference with () do
+    return 2*pi*this@radius.
+  end
+
+  -- print out all the data members
+  function toString with () do
+    return("xCor: " + this@xCor + " , yCor: " + this@yCor + " , radius: "+ this@radius).
+  end
+
+end
+
+structure anotherCircle with
+  data xCor.
+  data yCor.
+  data radius.
+
+  -- Calcluate Area 
+  function area with () do
+    return pi * this@radius * this@radius
+  end
+
+  -- Calculate Circumference
+  function circumference with () do
+    return 2*pi*this@radius.
+  end
+
+  -- print out all the data members
+  function toString with () do
+    println("xCor: " this@xCor + " , yCor: "+this@yCor + " , radius: "this@radius).
+  end
+end
+
+let aCircle:%Circle = Circle(0,0,1).
+println(aCircle@toString()).
+
+-- Should print out error message
+println("VVVVVVVVV There should be a problem because Asteroid uses 'Name Equvalence'. VVVVVVVVVV").
+let bCircle:%anotherCircle = aCircle.
+
+
+

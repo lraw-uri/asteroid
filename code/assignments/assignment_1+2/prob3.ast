@@ -1,0 +1,16 @@
+load system "io".
+
+println("X = the set of all integers divisible by 3.  ").
+println("Y = the set of all integers divisible by 12.").
+println("Z = the set of all integers.").
+
+println(" ").
+
+println("Type Hierarchy of Given problem.").
+println("Y < X < Z ").
+println("Z > X > Y ").
+println("(a) X:= Y         => valid").
+println("(b) X:= X         => valid").
+println("(c) Y:= Y + 1     => invalid").
+println("(d) Z:= X         => valid").
+println("(e) X:= X + Z     => invalid").

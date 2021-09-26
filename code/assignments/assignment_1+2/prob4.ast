@@ -1,0 +1,22 @@
+load system "io".
+
+println("class Car {...}").
+println("class SportsCar inherits Car {...}.").
+println("class SUV inherits Car {...}").
+println("class FourByFourSUV inherits SUV {...}").
+
+println(" ").
+println("Type Hierarchy of Given problem.").
+println("- SportsCar < Car ").
+println("- FourByFourSUV < SUV < Car ").
+
+println(" ").
+println("Determine whether the following statements are valid: ").
+
+println(" ").
+println("(a) Car c = new SUV();                         => valid").
+println("(b) SportsCar s = new FourByFourSUV();         => invalid").
+println("(c) Given the function definition: ").
+println("             void some_function(FourByFourSUV f){...}"). 
+println("    Is the following function call valid?").
+println("             some_function(new SUV());         => invalid").

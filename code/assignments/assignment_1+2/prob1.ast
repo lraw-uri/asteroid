@@ -1,0 +1,39 @@
+load system "io".
+load system "math".
+
+------------------------------------------------------------------
+-- Definition - Circle 
+------------------------------------------------------------------
+structure Circle with
+  data xCor.
+  data yCor.
+  data radius.
+
+  -- Calcluate Area 
+  function area with () do
+    return pi * this@radius * this@radius
+  end
+
+  -- Calculate Circumference
+  function circumference with () do
+    return 2*pi*this@radius.
+  end
+
+end
+
+-- Instantitate a Circle
+let aCircle = Circle(3.1, 5.6, 10.5).
+
+println("x = " +aCircle@xCor+ ", y = " +aCircle@yCor+ ", radius = " +aCircle@radius).
+println("Circumference is " + aCircle@circumference()).
+println("Area is " + aCircle@area()).
+println(" ").
+
+-- Instantiate a Circle with restricted type
+let restricted_circle:%Circle = Circle(0,0,1).
+
+println("Restricted Circle: xcor: " + restricted_circle@xCor + " ycor: "+ restricted_circle@yCor+ " radius: " + restricted_circle@radius).
+println("Restricted Circle circumference: " + restricted_circle@circumference()).
+println("Restricted Circle area: " + restricted_circle@area()).
+
+

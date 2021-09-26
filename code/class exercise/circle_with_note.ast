@@ -1,0 +1,48 @@
+load system "io".
+
+-- the math constants 
+load system "math".
+
+-- this is how you define an object
+--       you can have data, function and ...
+structure Circle with
+  data xCor.
+  data yCor.
+  data radius.
+
+  -- another function 
+  function foobar with a do
+    println("printing from foobar " + a).
+  end
+
+  -- fucntion circumference with () do is similar to
+  -- function circumference with none do
+  -- this is how you call the other function from within the object
+  function circumference with () do
+    let result = 2*pi*this@radius.
+    this@foobar(result).
+    return result.
+  end
+
+end
+
+-- this is how you set a variable
+let c = Circle(3.1, 5.6, 10.5).
+
+-- this is how you access the member from the object.
+println("x = " +c@xCor+ ", y = " +c@yCor+ ", radius = " +c@radius).
+
+-- this is how you access the function from the object.
+println("circumference is " + c@circumference()).
+
+-- this is how to restrict the variable type.
+let restricted_var:%Circle = Circle(0,0,1).
+
+println("I am restricted var = xcor: " + restricted_var@xCor +" ycor: "+ restricted_var@yCor+ " radius: " + restricted_var@radius).
+let restricted_var = c.
+println("I am restricted var = xcor: " + restricted_var@xCor +" ycor: "+ restricted_var@yCor+ " radius: " + restricted_var@radius).
+
+-- this will create error.
+--let restricted_var = 3
+--println(restricted_var)
+

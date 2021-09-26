@@ -1,0 +1,4 @@
+structure Rect with
+  data xdim.
+  data ydim.
+end

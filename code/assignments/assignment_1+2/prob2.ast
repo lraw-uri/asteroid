@@ -1,0 +1,20 @@
+load system "io".
+
+structure Type1 with
+  data x.
+  data y.
+end
+
+structure Type2 with
+  data x.
+  data y.
+end
+
+println("Asteroid uses 'Name Equvalence' for checking Type Equvalence.").
+
+let aType = Type1(1, 1).
+println("x: " + aType@x + " , y: " + aType@y).
+
+println("VVVVVVVVV There will be error message because Asteroid uses 'Name Equvalence'. VVVVVVVVVV").
+let bType:%Type2 = aType.
+
